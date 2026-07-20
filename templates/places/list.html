@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<!-- header + ปุ่มเพิ่ม -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0 fw-semibold"><i class="bi bi-map me-2"></i>สถานที่ท่องเที่ยว</h5>
+    {% if current_user.is_authenticated and current_user.is_admin %}
+    <a href="{{ url_for('places.add') }}" class="btn btn-success btn-sm">
+        <i class="bi bi-plus-circle me-1"></i>เพิ่มสถานที่
+    </a>
+    {% endif %}
+</div>
+
+<!-- ค้นหา + หมวดหมู่ (กลาง) -->
+<div class="text-center mb-4">
+    <form method="GET" class="d-flex justify-content-center mb-3">
+        <div class="input-group" style="max-width:420px;">
+            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" name="q" class="form-control border-start-0"
+                   placeholder="ค้นหาสถานที่..." value="{{ q }}" style="box-shadow:none;">
+            {% if active_cat %}<input type="hidden" name="cat" value="{{ active_cat }}">{% endif %}
+            <button class="btn btn-primary px-3" type="submit">ค้นหา</button>
+            {% if q %}<a href="{{ url_for('places.list_places') }}" class="btn btn-outline-secondary"><i class="bi bi-x"></i></a>{% endif %}
+        </div>
+    </form>
+
+    <div class="d-flex justify-content-center gap-2 flex-wrap">
+        <a href="{{ url_for('places.list_places') }}"
+           class="btn btn-sm {{ 'btn-secondary' if not active_cat else 'btn-outline-secondary' }}">ทั้งหมด</a>
+        {% for c in categories %}
+        <a href="{{ url_for('places.list_places', cat=c.id) }}"
+           class="btn btn-sm {{ 'btn-primary' if active_cat == c.id else 'btn-outline-primary' }}">{{ c.name }}</a>
+        {% endfor %}
+    </div>
+</div>
+
+{% if q %}
+<div class="alert alert-info py-2 small mb-3">
+    <i class="bi bi-info-circle me-1"></i>ผลการค้นหา "<strong>{{ q }}</strong>" — พบ <strong>{{ places|length }}</strong> รายการ
+</div>
+{% endif %}
+
+<hr class="my-2">
+
+{% if places %}
+<div class="row g-3">
+{% for p in places %}
+<div class="col-12 col-md-6 col-lg-4">
+    <div class="card h-100 shadow-sm border-0"
+         style="cursor:pointer;transition:transform .15s;"
+         onmouseover="this.style.transform='translateY(-3px)'"
+         onmouseout="this.style.transform='translateY(0)'"
+         onclick="location.href='{{ url_for('places.detail', id=p.id) }}'">
+        {% if p.primary_image %}
+        <div style="height:170px;overflow:hidden;">
+            <img src="{{ p.primary_image|proxy_url }}" style="width:100%;height:100%;object-fit:cover;"
+                 onerror="this.parentNode.style.display='none'">
+        </div>
+        {% endif %}
+        <div class="card-body p-3">
+            <div class="d-flex justify-content-between align-items-start mb-1">
+                <h6 class="mb-0 fw-semibold" style="font-size:.9rem;">{{ p.name }}</h6>
+                {% if p.avg_rating %}
+                <span class="badge bg-warning text-dark ms-1" style="font-size:.7rem;white-space:nowrap;">
+                    <i class="bi bi-star-fill"></i> {{ p.avg_rating }}
+                </span>
+                {% else %}
+                <span class="badge bg-light text-secondary ms-1" style="font-size:.68rem;">ยังไม่มีรีวิว</span>
+                {% endif %}
+            </div>
+            <p class="text-muted mb-1" style="font-size:.77rem;"><i class="bi bi-geo-alt me-1"></i>{{ p.location }}</p>
+            <p class="text-secondary mb-2" style="font-size:.79rem;line-height:1.4;
+               display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">{{ p.detail }}</p>
+
+            <div class="d-flex gap-1 flex-wrap" onclick="event.stopPropagation()">
+                {% if p.latitude and p.longitude %}
+                <a href="{{ url_for('places.map_view', id=p.id) }}" class="btn btn-outline-secondary btn-sm py-0" style="font-size:.74rem;">
+                    <i class="bi bi-pin-map"></i>
+                </a>
+                {% endif %}
+                {% if current_user.is_authenticated %}
+                    {% if p.id in favorites %}
+                    <a href="{{ url_for('places.toggle_favorite', place_id=p.id, next='/places') }}" class="btn btn-warning btn-sm py-0" style="font-size:.74rem;"><i class="bi bi-heart-fill"></i></a>
+                    {% else %}
+                    <a href="{{ url_for('places.toggle_favorite', place_id=p.id, next='/places') }}" class="btn btn-outline-secondary btn-sm py-0" style="font-size:.74rem;"><i class="bi bi-heart"></i></a>
+                    {% endif %}
+                {% endif %}
+                {% if current_user.is_authenticated and current_user.is_admin %}
+                <a href="{{ url_for('places.edit', id=p.id) }}" class="btn btn-outline-secondary btn-sm py-0 ms-auto" style="font-size:.74rem;" onclick="event.stopPropagation()"><i class="bi bi-pencil"></i></a>
+                <form method="POST" action="{{ url_for('places.delete', id=p.id) }}" style="display:inline;" onclick="event.stopPropagation()">
+                    <button onclick="return confirm('ยืนยันการลบ?')" class="btn btn-outline-danger btn-sm py-0" style="font-size:.74rem;"><i class="bi bi-trash"></i></button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+    <i class="bi bi-search" style="font-size:3rem;"></i>
+    <p class="mt-2">ไม่พบสถานที่ที่ค้นหา</p>
+</div>
+{% endif %}
+{% endblock %}

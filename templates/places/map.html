@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0 fw-semibold"><i class="bi bi-pin-map me-2"></i>แผนที่สถานที่ท่องเที่ยว</h5>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary btn-sm" onclick="toggleMap()">
+            <i class="bi bi-arrows-collapse" id="toggle-icon"></i> <span id="toggle-text">ย่อแผนที่</span>
+        </button>
+        <a href="{{ url_for('places.list_places') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>กลับ
+        </a>
+    </div>
+</div>
+
+<div id="map" style="height:420px;border-radius:12px;z-index:0;" class="shadow mb-3"></div>
+
+<div id="no-places" class="text-center py-4 text-muted d-none">
+    <i class="bi bi-geo-alt-fill" style="font-size:2.5rem;"></i>
+    <p class="mt-2">ยังไม่มีสถานที่ที่มีพิกัด<br><small>Admin สามารถเพิ่มพิกัดได้ตอนเพิ่มสถานที่</small></p>
+</div>
+
+<h6 class="fw-semibold mb-2"><i class="bi bi-list-ul me-1"></i>สถานที่บนแผนที่</h6>
+<div class="row g-2" id="place-list"></div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+const focusId = {{ focus_id | tojson }};
+let mapExpanded = true;
+
+const map = L.map('map', {preferCanvas: true, minZoom: 6}).setView([15.2448, 104.8473], 12);
+
+// ใช้ CartoDB tile ซึ่งไม่บล็อก referer
+L.tileLayer('/tile/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19
+}).addTo(map);
+
+const icon = L.divIcon({
+    html: '<i class="bi bi-geo-alt-fill" style="font-size:1.8rem;color:#dc3545;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.3));"></i>',
+    className: '', iconAnchor: [12, 28], popupAnchor: [0, -28]
+});
+
+function toggleMap() {
+    mapExpanded = !mapExpanded;
+    document.getElementById('map').style.height = mapExpanded ? '420px' : '200px';
+    document.getElementById('toggle-icon').className = mapExpanded ? 'bi bi-arrows-collapse' : 'bi bi-arrows-expand';
+    document.getElementById('toggle-text').textContent = mapExpanded ? 'ย่อแผนที่' : 'ขยายแผนที่';
+    setTimeout(() => map.invalidateSize(), 350);
+}
+
+fetch('/api/places')
+    .then(r => r.json())
+    .then(places => {
+        if (places.length === 0) {
+            document.getElementById('no-places').classList.remove('d-none');
+            return;
+        }
+
+        const markers = {};
+        const bounds = [];
+
+        places.forEach(p => {
+            const marker = L.marker([p.latitude, p.longitude], {icon})
+                .addTo(map)
+                .bindPopup(`
+                    <div style="min-width:190px;font-family:'Prompt',sans-serif;">
+                        ${p.image_url ? `<img src="/proxy-image?url=${encodeURIComponent(p.image_url)}" style="width:100%;height:90px;object-fit:cover;border-radius:6px;margin-bottom:6px;" onerror="this.style.display='none'">` : ''}
+                        <div style="font-weight:600;font-size:0.9rem;color:#212529;margin-bottom:2px;">${p.name}</div>
+                        <div style="font-size:0.78rem;color:#6c757d;margin-bottom:4px;"><i class="bi bi-geo-alt"></i> ${p.location}</div>
+                        ${p.avg_rating ? `<span style="background:#ffc107;color:#000;font-size:0.75rem;padding:1px 6px;border-radius:4px;"><i class="bi bi-star-fill"></i> ${p.avg_rating}</span>` : ''}
+                        <div style="margin-top:6px;">
+                            <a href="/place/${p.id}" style="display:block;background:#0d6efd;color:#fff;text-align:center;padding:4px;border-radius:6px;font-size:0.8rem;text-decoration:none;">รายละเอียด</a>
+                        </div>
+                    </div>
+                `);
+            markers[p.id] = marker;
+            bounds.push([p.latitude, p.longitude]);
+
+            const col = document.createElement('div');
+            col.className = 'col-6 col-md-4 col-lg-3';
+            col.innerHTML = `
+                <div class="card shadow-sm border-0 h-100" style="border-radius:10px;overflow:hidden;cursor:pointer;" onclick="focusPlace(${p.id})">
+                    ${p.image_url ? `<img src="/proxy-image?url=${encodeURIComponent(p.image_url)}" style="height:90px;object-fit:cover;width:100%;" onerror="this.style.display='none'">` : ''}
+                    <div class="p-2">
+                        <div style="font-weight:600;font-size:0.82rem;color:#212529;">${p.name}</div>
+                        <div style="font-size:0.74rem;color:#6c757d;"><i class="bi bi-geo-alt"></i> ${p.location}</div>
+                        ${p.avg_rating
+                            ? `<span style="background:#ffc107;color:#000;font-size:0.7rem;padding:1px 5px;border-radius:4px;"><i class="bi bi-star-fill"></i> ${p.avg_rating}</span>`
+                            : `<span style="background:#e9ecef;color:#6c757d;font-size:0.7rem;padding:1px 5px;border-radius:4px;">ยังไม่มีรีวิว</span>`}
+                    </div>
+                </div>`;
+            document.getElementById('place-list').appendChild(col);
+        });
+
+        if (bounds.length > 0) map.fitBounds(bounds, {padding: [50, 50]});
+
+        if (focusId && markers[focusId]) {
+            setTimeout(() => {
+                map.setView(markers[focusId].getLatLng(), 14);
+                markers[focusId].openPopup();
+            }, 300);
+        }
+
+        window.focusPlace = (id) => {
+            if (markers[id]) {
+                map.setView(markers[id].getLatLng(), 15);
+                markers[id].openPopup();
+                window.scrollTo({top: 0, behavior: 'smooth'});
+            }
+        };
+    });
+</script>
+
+{% endblock %}

@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <h2 class="mb-0"><i class="bi bi-speedometer2 me-2"></i>Admin Dashboard</h2>
+    <span class="badge bg-warning text-dark fs-6">Admin Panel</span>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 p-3">
+            <div class="d-flex align-items-center gap-3">
+                <i class="bi bi-people-fill text-primary" style="font-size:2.5rem;"></i>
+                <div>
+                    <h2 class="mb-0 fw-bold text-primary">{{ users|length }}</h2>
+                    <div class="text-muted">ผู้ใช้งานทั้งหมด</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 p-3">
+            <div class="d-flex align-items-center gap-3">
+                <i class="bi bi-geo-alt-fill text-danger" style="font-size:2.5rem;"></i>
+                <div>
+                    <h2 class="mb-0 fw-bold text-danger">{{ places|length }}</h2>
+                    <div class="text-muted">สถานที่ท่องเที่ยว</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 p-3">
+            <div class="d-flex align-items-center gap-3">
+                <i class="bi bi-folder-fill text-warning" style="font-size:2.5rem;"></i>
+                <div>
+                    <h2 class="mb-0 fw-bold text-warning">{{ categories|length }}</h2>
+                    <div class="text-muted">หมวดหมู่</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Users -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <h5 class="mb-3"><i class="bi bi-people me-2"></i>ผู้ใช้งานทั้งหมด</h5>
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>#</th><th>ชื่อผู้ใช้</th><th>สถานะ</th></tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td><a href="{{ url_for('user.profile_user', user_id=u.id) }}" class="text-decoration-none"><i class="bi bi-person me-1"></i>{{ u.username }}</a></td>
+                    <td>
+                        {% if u.is_admin %}
+                            <span class="badge bg-success"><i class="bi bi-gear me-1"></i>Admin</span>
+                        {% else %}
+                            <span class="badge bg-secondary"><i class="bi bi-person me-1"></i>User</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Places -->
+    <div class="col-md-7">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0"><i class="bi bi-geo-alt me-2"></i>สถานที่ทั้งหมด</h5>
+                    <a href="{{ url_for('places.add') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-circle me-1"></i>เพิ่ม</a>
+                </div>
+                <!-- Accordion โฟลเดอร์ตามหมวด -->
+                <div class="accordion" id="placeAccordion">
+                {% for cat in categories %}
+                    {% set cat_places = places | selectattr('category_id','equalto',cat.id) | list %}
+                    {% if cat_places %}
+                    <div class="accordion-item border rounded mb-2">
+                        <h2 class="accordion-header" id="heading-{{ cat.id }}">
+                            <button class="accordion-button collapsed py-2 fw-semibold" type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#cat-{{ cat.id }}"
+                                    aria-expanded="false"
+                                    aria-controls="cat-{{ cat.id }}"
+                                    style="font-size:.88rem;background:#f8f9fa;">
+                                <i class="bi bi-folder2 me-2 text-warning"></i>
+                                {{ cat.name }}
+                                <span class="badge bg-secondary ms-2">{{ cat_places|length }}</span>
+                            </button>
+                        </h2>
+                        <div id="cat-{{ cat.id }}" class="accordion-collapse collapse"
+                             aria-labelledby="heading-{{ cat.id }}"
+                             data-bs-parent="#placeAccordion">
+                            <div class="accordion-body p-0">
+                                <table class="table table-sm table-hover mb-0">
+                                    <tbody>
+                                    {% for p in cat_places %}
+                                    <tr>
+                                        <td class="ps-4">
+                                            <i class="bi bi-geo-alt text-danger me-1" style="font-size:.75rem;"></i>
+                                            <a href="{{ url_for('places.detail', id=p.id) }}" class="text-decoration-none" style="font-size:.85rem;">{{ p.name }}</a>
+                                        </td>
+                                        <td class="text-muted" style="font-size:.78rem;">{{ p.location }}</td>
+                                        <td class="text-end pe-3">
+                                            <div class="d-flex gap-1 justify-content-end">
+                                                <a href="{{ url_for('places.edit', id=p.id) }}" class="btn btn-outline-secondary btn-sm py-0 px-1"><i class="bi bi-pencil"></i></a>
+                                                <form method="POST" action="{{ url_for('places.delete', id=p.id) }}" style="display:inline;">
+                                                    <button onclick="return confirm('ยืนยันการลบ?')" class="btn btn-danger btn-sm py-0 px-1"><i class="bi bi-trash"></i></button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+
+                {# สถานที่ไม่มีหมวด #}
+                {% set no_cat = places | rejectattr('category_id') | list %}
+                {% if no_cat %}
+                <div class="accordion-item border rounded mb-2">
+                    <h2 class="accordion-header" id="heading-none">
+                        <button class="accordion-button collapsed py-2 fw-semibold" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#cat-none"
+                                aria-expanded="false" aria-controls="cat-none"
+                                style="font-size:.88rem;background:#f8f9fa;">
+                            <i class="bi bi-folder2 me-2 text-secondary"></i>
+                            ไม่มีหมวด
+                            <span class="badge bg-secondary ms-2">{{ no_cat|length }}</span>
+                        </button>
+                    </h2>
+                    <div id="cat-none" class="accordion-collapse collapse"
+                         aria-labelledby="heading-none" data-bs-parent="#placeAccordion">
+                        <div class="accordion-body p-0">
+                            <table class="table table-sm table-hover mb-0">
+                                <tbody>
+                                {% for p in no_cat %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <i class="bi bi-geo-alt text-danger me-1" style="font-size:.75rem;"></i>
+                                        <a href="{{ url_for('places.detail', id=p.id) }}" class="text-decoration-none" style="font-size:.85rem;">{{ p.name }}</a>
+                                    </td>
+                                    <td class="text-muted" style="font-size:.78rem;">{{ p.location }}</td>
+                                    <td class="text-end pe-3">
+                                        <div class="d-flex gap-1 justify-content-end">
+                                            <a href="{{ url_for('places.edit', id=p.id) }}" class="btn btn-outline-secondary btn-sm py-0 px-1"><i class="bi bi-pencil"></i></a>
+                                            <form method="POST" action="{{ url_for('places.delete', id=p.id) }}" style="display:inline;">
+                                                <button onclick="return confirm('ยืนยันการลบ?')" class="btn btn-danger btn-sm py-0 px-1"><i class="bi bi-trash"></i></button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Categories -->
+    <div class="col-md-5">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="mb-3"><i class="bi bi-folder me-2"></i>หมวดหมู่</h5>
+
+                <!-- เพิ่มหมวดหมู่ใหม่ -->
+                <form method="POST" action="{{ url_for('admin.add_category') }}" class="d-flex gap-2 mb-3">
+                    <input type="text" name="name" class="form-control form-control-sm"
+                           placeholder="ชื่อหมวดหมู่ใหม่..." required>
+                    <button class="btn btn-success btn-sm px-3" type="submit">
+                        <i class="bi bi-plus"></i>
+                    </button>
+                </form>
+
+                <!-- รายการหมวดหมู่ -->
+                <ul class="list-group list-group-flush">
+                    {% for c in categories %}
+                    <li class="list-group-item d-flex align-items-center justify-content-between px-0">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary rounded-circle"
+                                  style="width:28px;height:28px;line-height:18px;text-align:center;">
+                                {{ loop.index }}
+                            </span>
+                            <span>{{ c.name }}</span>
+                            {% set place_count = places|selectattr('category_id','equalto',c.id)|list|length %}
+                            <span class="badge bg-light text-muted" style="font-size:.7rem;">
+                                {{ place_count }} สถานที่
+                            </span>
+                        </div>
+                        <form method="POST" action="{{ url_for('admin.delete_category', id=c.id) }}"
+                              style="display:inline;"
+                              onsubmit="return confirm('ลบหมวดหมู่ {{ c.name }}? สถานที่ในหมวดนี้จะไม่มีหมวดหมู่')">
+                            <button class="btn btn-outline-danger btn-sm py-0">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item px-0 text-muted small">ยังไม่มีหมวดหมู่</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

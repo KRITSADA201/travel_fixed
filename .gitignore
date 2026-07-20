@@ -1,0 +1,7 @@
+# ไม่ให้ขึ้น GitHub
+.env
+instance/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
