@@ -4,3 +4,4 @@ flask-login
 flask-bcrypt
 python-dotenv
 requests
+gunicorn
